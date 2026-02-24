@@ -1,0 +1,79 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Release-571c8089616811d0c716.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "CanTool",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "CanTool::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-CanTool-Release-0f98673e1caaf7d82c04.json",
+					"name" : "CanTool",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "CanTool_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-CanTool_autogen-Release-8ef29e6c6c2a87679713.json",
+					"name" : "CanTool_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "CanTool_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-CanTool_autogen_timestamp_deps-Release-ae21c4a0b74855e01c47.json",
+					"name" : "CanTool_autogen_timestamp_deps",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/Lenovo/Desktop/POC/CanTool/build/Desktop_Qt_6_10_2_MSVC2022_64bit-Release",
+		"source" : "C:/Users/Lenovo/Desktop/POC/CanTool"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}
