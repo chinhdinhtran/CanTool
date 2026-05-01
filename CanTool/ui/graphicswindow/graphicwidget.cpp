@@ -192,12 +192,12 @@ void GraphicWidget::setupToolBar()
 {
     QToolBar* toolbar = addToolBar("Control");
 
-    QAction* homeAction = toolbar->addAction("🏠 Home");
+    QAction* homeAction = toolbar->addAction("Home");
     connect(homeAction, &QAction::triggered,
             this, &GraphicWidget::on_homeButtonClicked);
 
-    QAction* playAction = toolbar->addAction("▶ Play");
-    QAction* pauseAction = toolbar->addAction("⏸ Pause");
+    QAction* playAction = toolbar->addAction("Resume");
+    QAction* pauseAction = toolbar->addAction("Pause");
 
     toolbar->addSeparator();
 
@@ -275,7 +275,7 @@ void GraphicWidget::dummySignals(int num)
 void GraphicWidget::onSignalDoubleClicked(const QModelIndex& index)
 {
     // test 500 signals
-    // dummySignals(500);
+    // dummySignals(50);
 
     if (!index.isValid())
         return;

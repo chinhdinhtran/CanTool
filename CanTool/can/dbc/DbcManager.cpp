@@ -113,46 +113,89 @@ dbc::Network* DbcManager::network() const
     return m_dbcFile ? m_dbcFile->GetNetwork() : nullptr;
 }
 
+static bool extractBitsSafe(
+    const uint8_t* data,
+    uint16_t dlc,
+    uint16_t startBit,
+    uint16_t bitLength,
+    bool littleEndian,
+    uint64_t& out)
+{
+    out = 0;
+    uint16_t maxBits = dlc * 8;
+
+    if (bitLength == 0 || bitLength > 64)
+        return false;
+
+    if (littleEndian) {
+        if (startBit + bitLength > maxBits)
+            return false;
+
+        for (uint16_t i = 0; i < bitLength; ++i) {
+            uint16_t bitIndex = startBit + i;
+            uint8_t byte = data[bitIndex / 8];
+            uint8_t bit  = (byte >> (bitIndex % 8)) & 1;
+            out |= (uint64_t(bit) << i);
+        }
+    }
+    else {
+        if (startBit + 1 < bitLength)
+            return false;
+
+        for (uint16_t i = 0; i < bitLength; ++i) {
+            int bitIndex = startBit - i;
+            if (bitIndex < 0 || bitIndex >= maxBits)
+                return false;
+
+            uint8_t byte = data[bitIndex / 8];
+            uint8_t bit  = (byte >> (7 - (bitIndex % 8))) & 1;
+            out = (out << 1) | bit;
+        }
+    }
+    return true;
+}
+
+static int64_t signExtend(uint64_t value, uint16_t bitLength)
+{
+    uint64_t mask = 1ULL << (bitLength - 1);
+    return (value ^ mask) - mask;
+}
+
 void DbcManager::decodeFrame(const CanRawFrame& frame, QVector<DecodedSignalValue>& out)
 {
     if (!m_canInfo.hasMessage(frame.id))
-        return;
-
-    if (!m_dbcFile)
-        return;
-
-    dbc::Network* network = m_dbcFile->GetNetwork();
-    if (!network)
-        return;
-
-    const auto& msgInfo = m_canInfo.message(frame.id);
-
-    dbc::Message* dbcMsg = network->GetMessageByCanId(frame.id);
-    if (!dbcMsg)
-        return;
-
-    std::vector<uint8_t> data(frame.data, frame.data + frame.dlc);
-
-    out.reserve(msgInfo.signalList.size());
-
-    for (const auto& sigInfo : msgInfo.signalList)
     {
-        dbc::Signal* sig =
-            dbcMsg->GetSignal(sigInfo.name.toStdString());
-        if (!sig)
+        return;
+    }
+    const CanMessageInfo& msgInfo = m_canInfo.message(frame.id);
+    if (frame.dlc < msgInfo.dlc)
+        return;
+    out.reserve(msgInfo.signalList.size());
+    for (const CanSignalInfo& sig : msgInfo.signalList)
+    {
+        uint64_t raw;
+        if (!extractBitsSafe(
+                frame.data,
+                frame.dlc,
+                sig.startBit,
+                sig.bitLength,
+                sig.isLittleEndian,
+                raw))
+        {
             continue;
-
-        sig->ParseMessage(data, frame.timestamp, frame.id);
-
-        double v;
-        if (!sig->EngValue(v))
+        }
+        int64_t signedRaw = sig.isSigned
+            ? signExtend(raw, sig.bitLength)
+            : static_cast<int64_t>(raw);
+        double physical =
+            signedRaw * sig.scale + sig.offset;
+        if (physical < sig.minValue || physical > sig.maxValue)
             continue;
-
+        double ts_ms = static_cast<double>(frame.timestamp) / 1e6;
         out.push_back({
-            sigInfo.name,
-            v,
-            static_cast<double>(frame.timestamp)
+            sig.name,
+            physical,
+            static_cast<double>(ts_ms)
         });
     }
 }
-

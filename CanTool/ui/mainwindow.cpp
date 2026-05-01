@@ -76,8 +76,13 @@ void MainWindow::on_btnOpenDbc_clicked()
             return;
         }
     }
+    QMessageBox::information(
+                this,
+                tr("DBC Info"),
+                tr("Parse DBC file successful.\n")
+                );
     emit dbcLoaded();
-    ui->editDbcPath->setText("DBC loads successfuly.");
+    ui->editDbcPath->setText("Load DBC file successfully.");
 
     m_canController->openCan();
     m_canController->start();
@@ -121,7 +126,13 @@ void MainWindow::on_testDbcLog_clicked()
                     .arg(sig.unit);                    // %9
         }
     }
-
+    QMessageBox::information(
+        this,
+        tr("DBC Info"),
+        tr("Message count: %1\nSignal count: %2")
+            .arg(messages.size())
+            .arg(totalSignalCount)
+    );
     qDebug() << "Message count:" << messages.size() << "\nSignal count :" << totalSignalCount;
     qDebug() << "===== END DBC MODEL DUMP =====";
 }
@@ -135,6 +146,11 @@ void MainWindow::on_btnClearDbc_clicked()
     m_canController->clearModel();
     emit clearDbcSearchModel();
     ui->editDbcPath->setText("DBC was clear!");
+    QMessageBox::information(
+        this,
+        tr("DBC Info"),
+        tr("DBC was clear.\n")
+    );
 }
 
 void MainWindow::on_disp_graphic_clicked()

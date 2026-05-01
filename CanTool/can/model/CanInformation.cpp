@@ -15,9 +15,12 @@ bool CanInformation::hasMessage(uint32_t id) const
     return m_messages.contains(id);
 }
 
+//fix crash
 const CanMessageInfo& CanInformation::message(uint32_t id) const
 {
-    return m_messages.value(id);
+    auto it = m_messages.constFind(id);
+    Q_ASSERT(it != m_messages.constEnd());
+    return it.value();
 }
 
 const QMap<uint32_t, CanMessageInfo>&

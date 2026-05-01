@@ -138,22 +138,31 @@ bool VectorCanDriver::receive(CanRawFrame& frame)
     if (m_portHandle == XL_INVALID_PORTHANDLE)
         return false;
 
-    XLevent ev{};
+    XLevent ev;
+    std::memset(&ev, 0, sizeof(XLevent));
+
     unsigned int cnt = 1;
+    XLstatus status = xlReceive(m_portHandle, &cnt, &ev);
 
-    if (xlReceive(m_portHandle, &cnt, &ev) != XL_SUCCESS || cnt == 0)
+    if (status != XL_SUCCESS || cnt == 0)
         return false;
 
-    if (ev.tag != XL_CAN_EV_TAG_RX_OK)
+    if (ev.tag != XL_RECEIVE_MSG)
         return false;
 
-    auto& msg = ev.tagData.msg;
+    const auto& msg = ev.tagData.msg;
 
     frame.id = msg.id;
-    frame.dlc = msg.dlc;
-    std::memcpy(frame.data, msg.data, 8);
+
+frame.dlc = std::min<uint8_t>(msg.dlc, 8);
+std::memcpy(frame.data, msg.data, frame.dlc);
+
     frame.isExtended = (msg.flags & XL_CAN_EXT_MSG_ID) != 0;
     frame.timestamp = ev.timeStamp;
+
+    // qDebug() << "RX ID:" << Qt::hex << frame.id
+    //      << "DLC:" << frame.dlc
+    //      << "EXT:" << frame.isExtended;
 
     return true;
 }
