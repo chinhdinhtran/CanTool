@@ -113,7 +113,7 @@ bool BlfFileManager::writeFrame(const CanRawFrame& frame)
     msg.mHeader.mObjectFlags         = BL_OBJ_FLAG_TIME_ONE_NANS;
 
     msg.mHeader.mObjectTimeStamp = frame.timestamp;
-    msg.mChannel = 1;
+    msg.mChannel = frame.channel;
     msg.mID      = frame.id;
     msg.mDLC     = frame.dlc;
     msg.mFlags   = frame.isExtended ? CAN_MSG_FLAGS(1, 0)

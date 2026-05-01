@@ -11,6 +11,7 @@ struct CanRawFrame
     uint8_t  data[8]{};
     qint64   timestamp = 0;
     bool     isExtended = false;
+    uint8_t  channel = 0;
 };
 
 #endif // CANRAWFRAME_H

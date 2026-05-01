@@ -24,4 +24,5 @@ public:
 private:
     XLportHandle m_portHandle = XL_INVALID_PORTHANDLE;
     XLaccess     m_channelMask = 0;
+    XLhandle m_eventHandle = nullptr;
 };

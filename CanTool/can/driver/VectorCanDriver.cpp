@@ -29,42 +29,52 @@ bool VectorCanDriver::open()
         return false;
     }
 
-    unsigned int hwType = 0, hwIndex = 0, hwChannel = 0;
-    bool found = false;
+    char appName[] = "Qt_CAN_Tool_By_PWTTM_Team";
+
+    m_channelMask = 0;
+    int appChannel = 0;
+
+    QVector<XLaccess> channelMasks;
 
     for (unsigned int i = 0; i < cfg.channelCount; ++i)
     {
         auto& ch = cfg.channel[i];
+
         if ((ch.channelBusCapabilities & XL_BUS_ACTIVE_CAP_CAN) &&
             ch.busParams.busType == XL_BUS_TYPE_CAN)
         {
-            hwType = ch.hwType;
-            hwIndex = ch.hwIndex;
-            hwChannel = ch.hwChannel;
-            found = true;
-            break;
+            XLaccess mask = xlGetChannelMask(
+                ch.hwType,
+                ch.hwIndex,
+                ch.hwChannel
+            );
+
+            m_channelMask |= mask;
+            channelMasks.push_back(mask);
+
+            XLstatus s = xlSetApplConfig(appName,
+                                         appChannel++,
+                                         ch.hwType,
+                                         ch.hwIndex,
+                                         ch.hwChannel,
+                                         XL_BUS_TYPE_CAN);
+
+            if (s != XL_SUCCESS)
+            {
+                qDebug() << "xlSetApplConfig failed for channel" << i;
+                return false;
+            }
         }
     }
 
-    if (!found)
+    if (m_channelMask == 0)
     {
-        qDebug() << "No CAN channel found";
-        return false;
-    }
-
-    m_channelMask = xlGetChannelMask(hwType, hwIndex, hwChannel);
-
-    char appName[] = "Qt_CAN_Tool_By_PWT_Team";
-    status = xlSetApplConfig(appName, 0,
-                             hwType, hwIndex, hwChannel,
-                             XL_BUS_TYPE_CAN);
-    if (status != XL_SUCCESS)
-    {
-        qDebug() << "xlSetApplConfig failed";
+        qDebug() << "No CAN channels found";
         return false;
     }
 
     XLaccess permissionMask = m_channelMask;
+
     status = xlOpenPort(&m_portHandle,
                         appName,
                         m_channelMask,
@@ -72,17 +82,28 @@ bool VectorCanDriver::open()
                         1024,
                         XL_INTERFACE_VERSION,
                         XL_BUS_TYPE_CAN);
+
     if (status != XL_SUCCESS || permissionMask == 0)
     {
         qDebug() << "xlOpenPort failed";
         return false;
     }
 
-    status = xlCanSetChannelBitrate(m_portHandle, m_channelMask, 500000);
+    status = xlSetNotification(m_portHandle, &m_eventHandle, 1);
     if (status != XL_SUCCESS)
     {
-        qDebug() << "Set bitrate failed";
+        qDebug() << "xlSetNotification failed";
         return false;
+    }
+
+    for (auto mask : channelMasks)
+    {
+        status = xlCanSetChannelBitrate(m_portHandle, mask, 500000);
+        if (status != XL_SUCCESS)
+        {
+            qDebug() << "Set bitrate failed";
+            return false;
+        }
     }
 
     xlCanSetChannelMode(m_portHandle, m_channelMask, 0, 0);
@@ -91,13 +112,14 @@ bool VectorCanDriver::open()
                                m_channelMask,
                                XL_BUS_TYPE_CAN,
                                XL_ACTIVATE_RESET_CLOCK);
+
     if (status != XL_SUCCESS)
     {
         qDebug() << "Activate channel failed";
         return false;
     }
 
-    qDebug() << "Vector CAN opened successfully";
+    qDebug() << "Vector CAN multi-channel opened successfully";
     return true;
 }
 
@@ -111,6 +133,7 @@ void VectorCanDriver::close()
         xlCloseDriver();
         m_portHandle = XL_INVALID_PORTHANDLE;
         m_channelMask = 0;
+        m_eventHandle = nullptr;
     }
 }
 
@@ -138,10 +161,14 @@ bool VectorCanDriver::receive(CanRawFrame& frame)
     if (m_portHandle == XL_INVALID_PORTHANDLE)
         return false;
 
-    XLevent ev;
-    std::memset(&ev, 0, sizeof(XLevent));
+    DWORD rc = WaitForSingleObject(m_eventHandle, 100);
 
+    if (rc != WAIT_OBJECT_0)
+        return false;
+
+    XLevent ev;
     unsigned int cnt = 1;
+
     XLstatus status = xlReceive(m_portHandle, &cnt, &ev);
 
     if (status != XL_SUCCESS || cnt == 0)
@@ -153,16 +180,14 @@ bool VectorCanDriver::receive(CanRawFrame& frame)
     const auto& msg = ev.tagData.msg;
 
     frame.id = msg.id;
-
-frame.dlc = std::min<uint8_t>(msg.dlc, 8);
-std::memcpy(frame.data, msg.data, frame.dlc);
+    frame.dlc = std::min<uint8_t>(msg.dlc, 8);
+    std::memcpy(frame.data, msg.data, frame.dlc);
 
     frame.isExtended = (msg.flags & XL_CAN_EXT_MSG_ID) != 0;
-    frame.timestamp = ev.timeStamp;
 
-    // qDebug() << "RX ID:" << Qt::hex << frame.id
-    //      << "DLC:" << frame.dlc
-    //      << "EXT:" << frame.isExtended;
+    frame.channel = ev.chanIndex;
+
+    frame.timestamp = ev.timeStamp;
 
     return true;
 }
