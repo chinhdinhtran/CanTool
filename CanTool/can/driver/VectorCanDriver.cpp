@@ -166,7 +166,7 @@ bool VectorCanDriver::receive(CanRawFrame& frame)
     if (rc != WAIT_OBJECT_0)
         return false;
 
-    XLevent ev;
+    XLevent ev{};
     unsigned int cnt = 1;
 
     XLstatus status = xlReceive(m_portHandle, &cnt, &ev);
@@ -180,13 +180,14 @@ bool VectorCanDriver::receive(CanRawFrame& frame)
     const auto& msg = ev.tagData.msg;
 
     frame.id = msg.id;
-    frame.dlc = std::min<uint8_t>(msg.dlc, 8);
-    std::memcpy(frame.data, msg.data, frame.dlc);
+    frame.dlc = msg.dlc;
+    frame.isFd = (msg.flags & XL_CAN_RXMSG_FLAG_EDL) != 0;
+
+    uint8_t copyLen = std::min<uint8_t>(msg.dlc, sizeof(frame.data));
+    std::memcpy(frame.data, msg.data, copyLen);
 
     frame.isExtended = (msg.flags & XL_CAN_EXT_MSG_ID) != 0;
-
     frame.channel = ev.chanIndex;
-
     frame.timestamp = ev.timeStamp;
 
     return true;
